@@ -1,0 +1,38 @@
+/* 🔘 OMEGA PROFESSIONAL PILL LAYERS (RIGHT-SIDE v60.3) */
+.layer-hub-fixed { 
+    position: absolute; bottom: 85px; right: 24px; z-index: 8000; 
+    display: flex; align-items: center; gap: 12px;
+}
+
+.layers-btn-square {
+    width: 68px; height: 68px; background: white; border-radius: 12px;
+    border: 3px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    cursor: pointer; overflow: hidden; position: relative;
+}
+.layers-btn-square .label {
+    position: absolute; bottom: 0; width: 100%; background: white;
+    font-size: 10px; font-weight: 800; text-align: center; color: #202124; padding: 2px 0;
+}
+
+.layers-google-flyout-left {
+    display: flex; gap: 16px; background: #ffffff; 
+    padding: 12px 20px; border-radius: 16px; 
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    opacity: 0; transform: translateX(20px); pointer-events: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.layer-hub-fixed:hover .layers-google-flyout-left { opacity: 1; transform: translateX(0); pointer-events: auto; }
+
+.layer-option-vertical {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;
+}
+.layer-icon-box {
+    width: 52px; height: 52px; border-radius: 12px; border: 2.5px solid transparent;
+    background-size: cover; background-position: center; transition: all 0.2s;
+}
+.layer-option-vertical:hover .layer-icon-box { border-color: #1a73e8; transform: scale(1.05); }
+.layer-option-vertical span { font-size: 11px; font-weight: 700; color: #5f6368; }
+
+.street-img { background-image: url('https://mt1.google.com/vt/lyrs=m&x=11240&y=6749&z=14'); }
+.sat-img { background-image: url('https://mt1.google.com/vt/lyrs=s&x=11240&y=6749&z=14'); }
+.night-img { background-color: #202124; }

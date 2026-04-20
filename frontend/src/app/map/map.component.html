@@ -1,0 +1,171 @@
+<div class="map-wrapper">
+  
+  <!-- 🔍 MASTER TOP HUB (STRICT LEVEL 1) -->
+  <div class="top-interface-hub">
+    <div class="menu-trigger-btn" (click)="toggleSidebar()">☰</div>
+    <div class="search-bar-unified">
+      <input type="text" [(ngModel)]="searchQuery" (input)="onSearchInput()" placeholder="Search Pakistan Maps..." />
+      <div (click)="performSearch()" style="cursor:pointer; padding:8px;">🔍</div>
+    </div>
+    <div class="network-status-badge" [class.offline]="!isOnline">{{ isOnline ? 'ON' : 'OFF' }}</div>
+  </div>
+
+  <!-- 🚪 KINETIC SLIDING DRAWER (v60.3) -->
+  <!-- 📡 AUTO-DISCOVERY PULSE BADGE (v75.0) -->
+  <div class="discovery-pulse" *ngIf="isAutoDiscover">
+    <div class="pulse-dot"></div>
+    <span>📡 Discovery Active: Z21 HD Caching...</span>
+  </div>
+
+  <aside class="google-sidebar-fixed" [class.collapsed]="!isSidebarOpen">
+    <div class="sidebar-header-compact">
+      <button (click)="toggleSidebar()" class="close-drawer-btn">×</button>
+    </div>
+    
+    <div class="sidebar-content">
+      <div class="tool-list">
+        <div class="icon-item" (click)="toggleStorage()"><i>🛍️</i> <span>Storage Manager</span></div>
+        <div class="icon-item" (click)="shareLocation()"><i>📡</i> <span>Share Location</span></div>
+        <div class="icon-item" (click)="showDownloadModal('Current City', false)"><i>📥</i> <span>Download Current City</span></div>
+        <div class="icon-item" (click)="downloadCurrentArea()"><i>📐</i> <span>Download Area (Z21)</span></div>
+        <div class="icon-item" (click)="showProvinceSelector()"><i>🚩</i> <span>Region Download</span></div>
+        <div class="icon-item" (click)="showDownloadModal('All Pakistan', false)">
+          <i>🇵🇰</i> <span>Full Pakistan (Z21)</span>
+        </div>
+        <div class="icon-item" (click)="showDownloadModal('Full Iran', false)">
+          <i>🇮🇷</i> <span>Full Iran (Z21)</span>
+        </div>
+        <div class="icon-item" (click)="showDownloadModal('Full Afghanistan', false)">
+          <i>🇦🇫</i> <span>Full Afghanistan (Z21)</span>
+        </div>
+        <div class="icon-item" (click)="toggleAutoDiscover()" [style.background]="isAutoDiscover ? '#e8f0fe' : (isHarvesting ? '#fce8e6' : 'transparent')">
+          <i [style.color]="isAutoDiscover ? '#1a73e8' : (isHarvesting ? '#d93025' : '#5f6368')">{{isAutoDiscover ? '📡' : (isHarvesting ? '⬇️' : '📡')}}</i> 
+          <span [style.color]="isAutoDiscover ? '#1a73e8' : (isHarvesting ? '#d93025' : '#202124')" style="font-weight:700;">{{isAutoDiscover ? '📍 Planning...' : (isHarvesting ? '⬇️ Harvesting...' : 'Auto-Discovery')}}</span>
+        </div>
+      </div>
+
+      <div class="download-progress-container" *ngIf="downloadStatus.active">
+         <div *ngIf="!downloadStatus.city.includes('Auto-Discovered')" style="font-weight:800; font-size:13px; margin-bottom:6px; color:#202124;">
+            {{downloadStatus.city}}
+         </div>
+         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div style="font-size:12px; display:flex; flex-direction:column; gap:4px; flex:1;">
+               <span>📦 <b>{{formatBytes(downloadStatus.mb)}}</b> / {{formatBytes(downloadStatus.totalMb)}}</span>
+               <span style="color:#1a73e8; font-weight:700; font-size:11px;">🧩 Tiles: {{downloadStatus.completed | number}} / {{downloadStatus.total | number}}</span>
+            </div>
+            <button (click)="stopDownload()" style="background:#d93025; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; font-weight:700; height:fit-content; margin-top:2px;">Cancel</button>
+         </div>
+         <div class="progress-bar-bg" style="margin-top:8px;"><div class="progress-bar-fill" [style.width.%]="(downloadStatus.completed / (downloadStatus.total || 1)) * 100"></div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 🔘 OMEGA RIGHT-SIDE PILL LAYERS (v60.3) -->
+  <div class="layer-hub-fixed">
+    <div class="layers-btn-square" (click)="toggleLayer()">
+      <div class="sat-img" style="height: 100%; width: 100%; background-size: cover; background-position: center;"></div>
+      <div class="label">Layers</div>
+    </div>
+    
+    <div class="google-layers-pill">
+      <div class="layer-option-vertical" (click)="switchLayer('google-street')">
+        <div class="layer-icon-box street-img"></div>
+        <span>Street</span>
+      </div>
+      <div class="layer-option-vertical" (click)="switchLayer('satellite')">
+        <div class="layer-icon-box sat-img"></div>
+        <span>Satellite</span>
+      </div>
+      <div class="layer-option-vertical" (click)="switchLayer('arcgis-street')">
+        <div class="layer-icon-box arcgis-img"></div>
+        <span>ArcGIS</span>
+      </div>
+      <div class="layer-option-vertical" (click)="switchLayer('arcgis-dark')">
+        <div class="layer-icon-box night-img"></div>
+        <span>Night</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🎯 LOCATE -->
+  <div class="actions-bottom-right">
+      <button class="fab-circle" (click)="locateUser()">🎯</button>
+  </div>
+
+  <!-- MAP CORE -->
+  <div id="map-container" [class.dark-filter]="currentLayerName === 'arcgis-dark'"></div>
+
+  <!-- 📊 FOOTER -->
+  <footer class="map-bottom-info">
+    <span>📍 {{ currentLat }}, {{ currentLng }}</span>
+    <span>🔍 Zoom: {{ currentZoom }}</span>
+    <span>🇵🇰 OMEGA GIS ENGINE</span>
+  </footer>
+
+  <!-- 🛍️ MODALS & STORAGE (FORCE TOP) -->
+  <div class="custom-modal-backdrop" *ngIf="customModal.show">
+    <div class="custom-modal-card">
+        <h3>{{customModal.title}}</h3>
+        <p>{{customModal.body}}</p>
+        <div *ngIf="customModal.isProvince">
+            <select [(ngModel)]="customModal.city" style="width:100%; padding:10px; margin-top:10px; border-radius:8px;">
+                <option value="Punjab">Punjab</option>
+                <option value="Sindh">Sindh</option>
+                <option value="Balochistan">Balochistan</option>
+                <option value="KPK">KPK</option>
+            </select>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-cancel" (click)="closeModal()">Cancel</button>
+            <!-- ⚡ DYNAMIC ACTION -->
+            <button *ngIf="!customModal.isDelete" class="modal-confirm" (click)="startOfflineHarvest()">Start Harvest</button>
+            <button *ngIf="customModal.isDelete" class="modal-confirm" style="background:#d93025;" (click)="confirmDelete()">Confirm Delete</button>
+        </div>
+    </div>
+  </div>
+
+  <div class="storage-drawer" *ngIf="isStorageOpen">
+     <div style="display:flex; justify-content:space-between; margin-bottom:20px; align-items:center;">
+        <h3 style="margin:0;">Offline Inventory 📦</h3>
+        <button (click)="confirmDeleteAll()" style="border:none; background:#fee2e2; color:#ef4444; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:11px; font-weight:bold; display:flex; align-items:center; gap:4px;">☢️ Reset Engine</button>
+        <button (click)="toggleStorage()" style="border:none; background:none; font-size:24px; cursor:pointer; color:#5f6368;">×</button>
+     </div>
+     
+     <div style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:10px;">
+        <!-- 📡 ACTIVE HARVEST (IF RUNNING) -->
+        <div *ngIf="downloadStatus.active" style="display:flex; justify-content:space-between; padding:15px; background:#e8f0fe; border-radius:12px; align-items:center; border:1px solid #1a73e8;">
+            <div>
+                <div style="font-weight:700; color:#1a73e8;">{{downloadStatus.city}}</div>
+                <div style="font-size:11px; color:#1a73e8; font-weight:700;">📡 Downloading...</div>
+            </div>
+            <button (click)="stopDownload()" style="background:#d93025; color:white; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:12px;">Stop</button>
+        </div>
+
+        <!-- 💾 SAVED REGIONS -->
+        <div *ngFor="let reg of downloadedRegions" style="display:flex; justify-content:space-between; padding:15px; background:#f8f9fa; border-radius:12px; align-items:center; border:1px solid #eee;">
+           <div>
+            <div style="font-weight:700; color:#202124;">{{reg.city}}</div>
+            <div style="font-size:11px; color:#5f6368; display:flex; flex-direction:column; gap:2px;">
+               <div style="display:flex; gap:8px;">
+                  <span>📦 <b>{{formatBytes(reg.size_mb)}}</b> / {{
+                    reg.city.includes('Pakistan') ? '250.00 GB' : 
+                    reg.city.includes('Iran') ? '550.00 GB' : 
+                    reg.city.includes('Afghanistan') ? '220.00 GB' : 
+                    formatBytes(reg.total_tiles * 0.006)
+                  }}</span>
+               </div>
+               <div style="display:flex; gap:8px; opacity:0.8;">
+                  <span>🧩 <b>{{reg.completed_tiles | number}}</b> / {{reg.total_tiles | number}} Tiles</span>
+               </div>
+            </div>
+            <div style="font-size:10px; font-weight:700;" [style.color]="(reg.status.includes('Capturing') || reg.status.includes('Harvesting') || reg.status.includes('Planning')) ? '#1a73e8' : '#1e8e3e'">{{reg.status}}</div>
+           </div>
+           <div style="display:flex; gap:8px;">
+               <button (click)="viewArea(reg)" style="border:1.5px solid #1a73e8; color:#1a73e8; background:white; padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:700; font-size:12px;">View</button>
+               <button (click)="showDeleteModal(reg.city)" style="background:#f1f3f4; color:#d93025; border:none; padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:700; font-size:12px;">🗑️</button>
+           </div>
+        </div>
+     </div>
+  </div>
+
+</div>

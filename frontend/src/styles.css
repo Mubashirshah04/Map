@@ -1,0 +1,92 @@
+@import "leaflet/dist/leaflet.css";
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f5f7fa;
+}
+
+main {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom Marker Styling if needed */
+.leaflet-container {
+  font-family: inherit !important;
+}
+
+/* Leaflet Popup Styling */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px !important;
+  padding: 8px !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px !important;
+  line-height: 1.5 !important;
+}
+
+/* 🔵 GOOGLE BLUE DOT & BEAM (GLOBAL VISIBILITY) */
+.google-blue-dot-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.google-blue-dot {
+    width: 14px;
+    height: 14px;
+    background: #1a73e8;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    z-index: 500;
+    position: relative;
+    top: 4px; /* Centering fix */
+    left: 4px;
+}
+
+.google-blue-beam {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 20px solid transparent;
+    border-right: 20px solid transparent;
+    border-top: 60px solid rgba(26, 115, 232, 0.4);
+    border-radius: 10px;
+    top: -35px;
+    transform-origin: bottom center;
+    z-index: 100;
+    filter: blur(4px);
+    mask-image: linear-gradient(to top, black, transparent);
+    -webkit-mask-image: linear-gradient(to top, black, transparent);
+}
+
+.google-blue-dot-pulse {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: #1a73e8;
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: pulse-dot 1.8s infinite ease-out;
+    z-index: 10;
+    top: 6px;
+    left: 6px;
+}
+
+@keyframes pulse-dot {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(3.5); opacity: 0; }
+}
