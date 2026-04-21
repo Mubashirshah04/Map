@@ -359,7 +359,24 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
   public pauseDownload(): void { fetch(`${this.baseUrl}/pause-download`, { method: 'POST' }); }
   public resumeDownload(): void { fetch(`${this.baseUrl}/resume-download`, { method: 'POST' }); }
   public showDeleteModal(city: string): void { this.customModal = { show: true, title: 'Delete', body: `Delete ${city}?`, isProvince: false, city, isAlreadyDone: false, isDelete: true }; }
+  public confirmStopDownload(): void {
+    const city = this.downloadStatus.city.replace('🛰️ ', '');
+    this.customModal = { 
+        show: true, 
+        title: 'Stop & Delete', 
+        body: `Aborting mission for ${city}. Delete all progress data?`, 
+        isProvince: false, 
+        city, 
+        isAlreadyDone: false, 
+        isDelete: true 
+    };
+  }
+
   public confirmDelete(): void {
+     if (this.downloadStatus.active && this.downloadStatus.city.includes(this.customModal.city)) {
+         this.stopDownload();
+     }
+
      fetch(`${this.baseUrl}/delete-download`, {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },

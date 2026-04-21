@@ -44,21 +44,39 @@
         </div>
       </div>
 
-      <div class="download-progress-container" *ngIf="downloadStatus.active">
-         <div *ngIf="!downloadStatus.city.includes('Auto-Discovered')" style="font-weight:800; font-size:13px; margin-bottom:6px; color:#202124;">
-            {{downloadStatus.city}}
-         </div>
-         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-            <div style="font-size:12px; display:flex; flex-direction:column; gap:4px; flex:1;">
-               <span>📦 <b>{{formatBytes(downloadStatus.mb)}}</b> / {{formatBytes(downloadStatus.totalMb)}}</span>
-               <span style="color:#1a73e8; font-weight:700; font-size:11px;">🧩 Tiles: {{downloadStatus.completed | number}} / {{downloadStatus.total | number}}</span>
-            </div>
-            <button (click)="stopDownload()" style="background:#d93025; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer; font-weight:700; height:fit-content; margin-top:2px;">Cancel</button>
-         </div>
-         <div class="progress-bar-bg" style="margin-top:8px;"><div class="progress-bar-fill" [style.width.%]="(downloadStatus.completed / (downloadStatus.total || 1)) * 100"></div></div>
-      </div>
+      <!-- Progress container moved to floating HUD at line 102 -->
     </div>
   </aside>
+
+  <!-- 🏙️ OMEGA FLOATING HUD (v108) - Always Visible Progress -->
+  <div class="omega-floating-hud" *ngIf="downloadStatus.active" style="z-index: 100000 !important;">
+    <div class="hud-header">
+       <span class="city-name">{{downloadStatus.city.includes('Auto-Discovered') ? '📍 Auto-Discovery Active' : downloadStatus.city}}</span>
+       <button class="delete-btn-hud" (click)="confirmStopDownload()">🗑️</button>
+    </div>
+    
+    <div class="hud-body">
+       <div style="font-size:11px; color:#5f6368; display:flex; flex-direction:column; gap:4px; margin-bottom:10px;">
+          <div style="display:flex; gap:8px;">
+             <span>📦 <b>{{formatBytes(downloadStatus.mb)}}</b> / {{
+               downloadStatus.city.includes('Pakistan') ? '250.00 GB' : 
+               downloadStatus.city.includes('Iran') ? '550.00 GB' : 
+               downloadStatus.city.includes('Afghanistan') ? '220.00 GB' : 
+               formatBytes(downloadStatus.totalMb)
+             }}</span>
+          </div>
+          <div style="display:flex; gap:8px; opacity:0.8;">
+             <span>🧩 <b>{{downloadStatus.completed | number}}</b> / {{downloadStatus.total | number}} Tiles</span>
+          </div>
+       </div>
+       
+       <div class="hud-progress-track">
+          <div class="hud-progress-fill" [style.width.%]="(downloadStatus.completed / (downloadStatus.total || 1)) * 100">
+             <div class="shimmer"></div>
+          </div>
+       </div>
+    </div>
+  </div>
 
   <!-- 🔘 OMEGA RIGHT-SIDE PILL LAYERS (v60.3) -->
   <div class="layer-hub-fixed">

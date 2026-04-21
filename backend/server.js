@@ -153,9 +153,9 @@ app.get('/download-status', (req, res) => {
     const budgets = {
         'Punjab': 85000, 'Sindh': 65000, 'KPK': 45000, 'Balochistan': 35000, 
         'Gilgit-Baltistan': 12000, 'AJK': 8000,
-        'All Pakistan': 250000,
-        'Full Iran': 550000,
-        'Full Afghanistan': 220000
+        'All Pakistan': 256000,
+        'Full Iran': 563200,
+        'Full Afghanistan': 225280
     };
 
     let estimatedTotalMbNum = totalTiles * 0.006; 
