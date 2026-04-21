@@ -79,7 +79,7 @@ app.post('/start-download', (req, res) => {
 
     const maxZ = 21; 
     let totalTotal = 0;
-    const layers = ['google-street', 'satellite'];
+    const layers = ['google-street', 'satellite', 'arcgis-street', 'arcgis-satellite'];
     
     // 📐 PRE-CALCULATE ACCURATE TARGETS
     for (let z = 0; z <= maxZ; z++) {
@@ -107,7 +107,8 @@ app.post('/start-download', (req, res) => {
 
     (async () => {
         const activePromises = new Set();
-        const CONCURRENCY = 200; 
+        const CONCURRENCY = 100; 
+        let yieldCounter = 0;
 
         try {
             for (let z = 0; z <= maxZ; z++) {
@@ -118,10 +119,20 @@ app.post('/start-download', (req, res) => {
                 for (let x = Math.min(nw_c.x, se_c.x); x <= Math.max(nw_c.x, se_c.x); x++) {
                     for (let y = Math.min(nw_c.y, se_c.y); y <= Math.max(nw_c.y, se_c.y); y++) {
                         if (!downloadQueue.active) break;
+                        
+                        // ⚙️ OMEGA STABILITY KERNEL (v110.0): Prevent Event Loop Blocking
+                        yieldCounter++;
+                        if (yieldCounter >= 500) {
+                            yieldCounter = 0;
+                            await new Promise(r => setImmediate(r)); // 🧠 Crucial: Let Node.js "Breathe"
+                        }
+
                         for (const layer of layers) {
                             const p = (async () => {
-                                await getTileWithFallback(layer, z, x, y);
-                                downloadQueue.completed++;
+                                try {
+                                    await getTileWithFallback(layer, z, x, y);
+                                    downloadQueue.completed++;
+                                } catch (err) {} 
                             })();
                             activePromises.add(p);
                             p.finally(() => activePromises.delete(p));
@@ -132,13 +143,18 @@ app.post('/start-download', (req, res) => {
                             }
                         }
                     }
+                    if (!downloadQueue.active) break;
                 }
             }
             if (activePromises.size > 0) await Promise.all(activePromises);
-        } catch (e) { console.error("[OMEGA] Manual Download Error:", e); }
+        } catch (e) { 
+            console.error("[OMEGA] Heavy-Duty Harvester Error:", e);
+            db.run("UPDATE downloads SET status='Error' WHERE city=?", [city]);
+        }
 
         downloadQueue.active = false;
-        db.run("UPDATE downloads SET status='Completed', size_mb=?, completed_tiles=? WHERE city=?", [(downloadQueue.bytes/(1024*1024)).toFixed(2), downloadQueue.completed, city]);
+        db.run("UPDATE downloads SET status='Completed', size_mb=?, completed_tiles=? WHERE city=?", 
+            [(downloadQueue.bytes/(1024*1024)).toFixed(2), downloadQueue.completed, city]);
     })();
 });
 
@@ -280,11 +296,9 @@ let autoMissionActive = false; // true = planning mode (no download), false = ha
 async function startHarvesting() {
     if (isDiscovering) { console.log('[HARVEST] Already running, skip.'); return; }
     isDiscovering = true;
-    console.log('[HARVEST] 🚀 Starting Harvest...');
-    const layers = ['google-street', 'satellite'];
+    const layers = ['google-street', 'satellite', 'arcgis-street', 'arcgis-satellite'];
     
     try {
-        // Get scope from DB
         const row = await new Promise(resolve => 
             db.get("SELECT bbox, total_tiles, size_mb, completed_tiles FROM downloads WHERE city=?", 
                 [autoCity], (err, r) => resolve(r))
@@ -303,23 +317,20 @@ async function startHarvesting() {
             total: row.total_tiles || 0, 
             mb: parseFloat(row.size_mb) || 0 
         };
-        console.log(`[HARVEST] 📦 Scope: ${JSON.stringify(scopeBbox)} | Total: ${autoHarvestingStatus.total} tiles`);
         
         const zoomTiers = [[15,16,17,18], [19,20,21]];
         for (const tier of zoomTiers) {
             for (const z of tier) {
-                if (autoMissionActive) { console.log('[HARVEST] ⏸️ User paused (planning mode ON)'); break; }
+                if (autoMissionActive) break;
                 
                 const nw = latLngToTile(Math.max(scopeBbox[1], scopeBbox[3]), Math.min(scopeBbox[0], scopeBbox[2]), z);
                 const se = latLngToTile(Math.min(scopeBbox[1], scopeBbox[3]), Math.max(scopeBbox[0], scopeBbox[2]), z);
                 
                 const minX = Math.min(nw.x, se.x), maxX = Math.max(nw.x, se.x);
                 const minY = Math.min(nw.y, se.y), maxY = Math.max(nw.y, se.y);
-                const tileCount = (maxX - minX + 1) * (maxY - minY + 1) * 2;
-                console.log(`[HARVEST] Z${z}: ${tileCount} tiles to process`);
                 
                 let activePromises = new Set();
-                const CONCURRENCY = 150; 
+                const CONCURRENCY = 100; // Increased stability
                 
                 for (let x = minX; x <= maxX; x++) {
                     for (let y = minY; y <= maxY; y++) {
@@ -327,37 +338,16 @@ async function startHarvesting() {
                         for (const layer of layers) {
                             const p = (async () => {
                                 try {
-                                    const exists = await new Promise(res => 
-                                        db.get("SELECT 1 FROM tiles WHERE layer=? AND z=? AND x=? AND y=?", 
-                                            [layer, z, x, y], (e, r) => res(r))
-                                    );
-                                    if (exists) return; 
-                                    
-                                    const sub = Math.floor(Math.random() * 4);
-                                    const url = layer === 'satellite' 
-                                        ? `https://mt${sub}.google.com/vt/lyrs=s&x=${x}&y=${y}&z=${z}` 
-                                        : `https://mt${sub}.google.com/vt/lyrs=m&x=${x}&y=${y}&z=${z}`;
-                                    const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 8000 });
-                                    const buffer = Buffer.from(response.data);
-                                    await new Promise(res => 
-                                        db.run("INSERT OR REPLACE INTO tiles (layer, z, x, y, data) VALUES (?,?,?,?,?)", 
-                                            [layer, z, x, y, buffer], res)
-                                    );
-                                    
-                                    autoHarvestingStatus.mb += buffer.length / (1024*1024);
+                                    // Use unified fallback logic to handle all layers
+                                    await getTileWithFallback(layer, z, x, y);
                                     autoHarvestingStatus.completed += 1;
                                     
-                                    if (autoHarvestingStatus.completed % 200 === 0) {
-                                        if (!autoMissionActive) {
-                                            db.run("UPDATE downloads SET size_mb=?, completed_tiles=?, status='📡 Harvesting Scope...' WHERE city=?", 
-                                                [autoHarvestingStatus.mb, autoHarvestingStatus.completed, autoCity]);
-                                        } else {
-                                            db.run("UPDATE downloads SET size_mb=?, completed_tiles=? WHERE city=?", 
-                                                [autoHarvestingStatus.mb, autoHarvestingStatus.completed, autoCity]);
-                                        }
-                                        console.log(`[HARVEST] ✅ ${autoHarvestingStatus.completed} tiles | ${autoHarvestingStatus.mb.toFixed(1)} MB`);
+                                    if (autoHarvestingStatus.completed % 250 === 0) {
+                                        autoHarvestingStatus.mb = downloadQueue.bytes / (1024*1024); // Update from core counter
+                                        db.run("UPDATE downloads SET size_mb=?, completed_tiles=? WHERE city=?", 
+                                            [autoHarvestingStatus.mb.toFixed(2), autoHarvestingStatus.completed, autoCity]);
                                     }
-                                } catch (tileErr) { /* skip failed tiles silently */ }
+                                } catch (tileErr) {}
                             })();
                             activePromises.add(p);
                             p.finally(() => activePromises.delete(p));
@@ -367,8 +357,6 @@ async function startHarvesting() {
                     if (autoMissionActive) break;
                 }
                 if (activePromises.size > 0) await Promise.all(activePromises);
-                db.run("UPDATE downloads SET size_mb=?, completed_tiles=? WHERE city=?", 
-                    [autoHarvestingStatus.mb, autoHarvestingStatus.completed, autoCity]);
             }
             if (autoMissionActive) break;
         }
@@ -429,7 +417,8 @@ app.post('/auto-discover', (req, res) => {
             const se = latLngToTile(finalBbox[1], finalBbox[2], z);
             scope += (Math.abs(se.x - nw.x) + 1) * (Math.abs(se.y - nw.y) + 1);
         }
-        const totalScope = scope * 2;
+        const totalLayers = ['google-street', 'satellite', 'arcgis-street', 'arcgis-satellite'].length;
+        const totalScope = scope * totalLayers;
         const status = isEnabled ? '📍 Planning Mission...' : '📡 Harvesting Scope...';
 
         db.run("INSERT OR REPLACE INTO downloads (city, status, size_mb, completed_tiles, total_tiles, bbox) VALUES (?,?,?,?,?,?)",
