@@ -14,16 +14,28 @@ app.use(express.json());
 
 let db;
 function initDB() {
-    db = new sqlite3.Database(DB_PATH);
+    db = new sqlite3.Database(DB_PATH, (err) => {
+        if (err) console.error("❌ Critical DB Error:", err);
+    });
+
     db.serialize(() => {
         db.run("CREATE TABLE IF NOT EXISTS downloads (city TEXT PRIMARY KEY, status TEXT, size_mb REAL, completed_tiles INTEGER, total_tiles INTEGER, bbox TEXT)");
         db.run("CREATE TABLE IF NOT EXISTS tiles (layer TEXT, z INTEGER, x INTEGER, y INTEGER, data BLOB, PRIMARY KEY(layer, z, x, y))");
-        db.run("ALTER TABLE downloads ADD COLUMN total_tiles INTEGER DEFAULT 0", () => {});
-        db.run("ALTER TABLE downloads ADD COLUMN bbox TEXT", () => {});
-        // 🔥 OMEGA TURBO-KERNEL (v97.0): Stability + Raw Power
+        
+        // 🛡️ OMEGA SAFETY KERNEL (v111.0): Power-Loss Protection
         db.run("PRAGMA journal_mode = WAL");
-        db.run("PRAGMA synchronous = OFF"); 
+        db.run("PRAGMA synchronous = NORMAL"); // 💎 Safer than 'OFF' for ambiguous poweroff
         db.run("PRAGMA cache_size = 10000");
+
+        // 🩺 Startup Integrity Check
+        db.get("SELECT count(*) as total FROM tiles", (err, row) => {
+            if (err && err.message.includes('malformed')) {
+                console.error("\n🛑 ALERT: DATABASE CORRUPTION DETECTED!");
+                console.error("👉 Please run 'node omega_rescue.js' immediately to save your 159GB+ data.\n");
+            } else {
+                console.log("✅ Database Integrity: Healthy");
+            }
+        });
     });
 }
 initDB();
