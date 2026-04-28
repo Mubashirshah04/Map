@@ -28,11 +28,85 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
   public currentLayerName: string = 'google-street';
   public downloadedRegions: any[] = [];
   public isCaching: boolean = false;
-  public isAutoDiscover: boolean = false; // 📡 AUTO-DISCOVERY TOGGLE
-  public isHarvesting: boolean = false; // 🏹 HARVESTING STATE
+  public isAutoDiscover: boolean = false; 
+  public isHarvesting: boolean = false; 
+  public selectedCountry: string = 'Pakistan';
+  public countrySearchQuery: string = 'Pakistan';
+  public isCountryListVisible: boolean = false;
+  public filteredCountries: any[] = [];
+  
+  private allCountries = [
+    {name: 'Pakistan', flag: '🇵🇰'}, {name: 'Iran', flag: '🇮🇷'}, {name: 'Afghanistan', flag: '🇦🇫'},
+    {name: 'India', flag: '🇮🇳'}, {name: 'China', flag: '🇨🇳'}, {name: 'USA', flag: '🇺🇸'},
+    {name: 'Russia', flag: '🇷🇺'}, {name: 'Turkey', flag: '🇹🇷'}, {name: 'Saudi Arabia', flag: '🇸🇦'},
+    {name: 'UAE', flag: '🇦🇪'}, {name: 'United Kingdom', flag: '🇬🇧'}, {name: 'Germany', flag: '🇩🇪'},
+    {name: 'France', flag: '🇫🇷'}, {name: 'Brazil', flag: '🇧🇷'}, {name: 'Japan', flag: '🇯🇵'},
+    {name: 'Canada', flag: '🇨🇦'}, {name: 'Australia', flag: '🇦🇺'}, {name: 'Italy', flag: '🇮🇹'},
+    {name: 'South Korea', flag: '🇰🇷'}, {name: 'Indonesia', flag: '🇮🇩'}, {name: 'Mexico', flag: '🇲🇽'},
+    {name: 'Egypt', flag: '🇪🇬'}, {name: 'South Africa', flag: '🇿🇦'}, {name: 'Nigeria', flag: '🇳🇬'},
+    {name: 'Bangladesh', flag: '🇧🇩'}, {name: 'Vietnam', flag: '🇻🇳'}, {name: 'Thailand', flag: '🇹🇭'},
+    {name: 'Iraq', flag: '🇮🇶'}, {name: 'Spain', flag: '🇪🇸'}, {name: 'Poland', flag: '🇵🇱'},
+    {name: 'Malaysia', flag: '🇲🇾'}, {name: 'Uzbekistan', flag: '🇺🇿'}, {name: 'Morocco', flag: '🇲🇦'},
+    {name: 'Nepal', flag: '🇳🇵'}, {name: 'Peru', flag: '🇵🇪'}, {name: 'Sri Lanka', flag: '🇱🇰'},
+    {name: 'Kazakhstan', flag: '🇰🇿'}, {name: 'Netherlands', flag: '🇳🇱'}, {name: 'Belgium', flag: '🇧🇪'},
+    {name: 'Greece', flag: '🇬🇷'}, {name: 'Portugal', flag: '🇵🇹'}, {name: 'Sweden', flag: '🇸🇪'},
+    {name: 'Norway', flag: '🇳🇴'}, {name: 'Denmark', flag: '🇩🇰'}, {name: 'Finland', flag: '🇫🇮'},
+    {name: 'Switzerland', flag: '🇨🇭'}, {name: 'Austria', flag: '🇦🇹'}, {name: 'Israel', flag: '🇮🇱'},
+    {name: 'Singapore', flag: '🇸🇬'}, {name: 'New Zealand', flag: '🇳🇿'}, {name: 'Ireland', flag: '🇮🇪'},
+    {name: 'Qatar', flag: '🇶🇦'}, {name: 'Kuwait', flag: '🇰🇼'}, {name: 'Oman', flag: '🇴🇲'},
+    {name: 'Jordan', flag: '🇯🇴'}, {name: 'Lebanon', flag: '🇱🇧'}, {name: 'Syria', flag: '🇸🇾'},
+    {name: 'Azerbaijan', flag: '🇦🇿'}, {name: 'Armenia', flag: '🇦🇲'}, {name: 'Georgia', flag: '🇬🇪'},
+    {name: 'Ukraine', flag: '🇺🇦'}, {name: 'Romania', flag: '🇷🇴'}, {name: 'Hungary', flag: '🇭🇺'},
+    {name: 'Czech Republic', flag: '🇨🇿'}, {name: 'Slovakia', flag: '🇸🇰'}, {name: 'Bulgaria', flag: '🇧🇬'},
+    {name: 'Serbia', flag: '🇷🇸'}, {name: 'Croatia', flag: '🇭🇷'}, {name: 'Slovenia', flag: '🇸🇮'},
+    {name: 'Lithuania', flag: '🇱🇹'}, {name: 'Latvia', flag: '🇱🇻'}, {name: 'Estonia', flag: '🇪🇪'},
+    {name: 'Argentina', flag: '🇦🇷'}, {name: 'Chile', flag: '🇨🇱'}, {name: 'Colombia', flag: '🇨🇴'},
+    {name: 'Venezuela', flag: '🇻🇪'}, {name: 'Ecuador', flag: '🇪🇨'}, {name: 'Bolivia', flag: '🇧🇴'},
+    {name: 'Paraguay', flag: '🇵🇾'}, {name: 'Uruguay', flag: '🇺🇾'}, {name: 'Panama', flag: '🇵🇦'},
+    {name: 'Costa Rica', flag: '🇨🇷'}, {name: 'Philippines', flag: '🇵🇭'}, {name: 'Myanmar', flag: '🇲🇲'},
+    {name: 'Cambodia', flag: '🇰🇭'}, {name: 'Laos', flag: '🇱🇦'}, {name: 'Mongolia', flag: '🇲🇳'},
+    {name: 'Tanzania', flag: '🇹🇿'}, {name: 'Kenya', flag: '🇰🇪'}, {name: 'Uganda', flag: '🇺🇬'},
+    {name: 'Ethiopia', flag: '🇪🇹'}, {name: 'Ghana', flag: '🇬🇭'}, {name: 'Ivory Coast', flag: '🇨🇮'},
+    {name: 'Senegal', flag: '🇸🇳'}, {name: 'Cameroon', flag: '🇨🇲'}, {name: 'Angola', flag: '🇦🇴'},
+    {name: 'Zimbabwe', flag: '🇿🇼'}, {name: 'Zambia', flag: '🇿🇲'}, {name: 'Sudan', flag: '🇸🇩'},
+    {name: 'Libya', flag: '🇱🇾'}, {name: 'Tunisia', flag: '🇹🇳'}, {name: 'Algeria', flag: '🇩🇿'}
+    // ... adding more is easy, this covers 95% of use cases.
+  ];
+
+  public filterCountries() {
+    this.isCountryListVisible = true;
+    this.filteredCountries = this.allCountries.filter(c => 
+      c.name.toLowerCase().includes(this.countrySearchQuery.toLowerCase())
+    );
+  }
+
+  public selectCountry(country: any) {
+    this.countrySearchQuery = country.name;
+    this.selectedCountry = country.name;
+    this.isCountryListVisible = false;
+  }
+
+  public async initGlobalMission() {
+    this.isCountryListVisible = false;
+    // 🌍 Resolve BBox for the selected country
+    try {
+       const resp = await fetch(`https://nominatim.openstreetmap.org/search?country=${this.countrySearchQuery}&format=json&limit=1`);
+       const res = await resp.json();
+       if (res && res.length > 0) {
+          const n = res[0];
+          const b = n.boundingbox.map(Number);
+          const finalBbox = [b[2], b[0], b[3], b[1]];
+          this.showDownloadModal(`Full ${this.countrySearchQuery}`, false, finalBbox);
+       } else {
+          alert("Could not find boundaries for this country.");
+       }
+    } catch (e) {
+       alert("Network error while fetching country boundaries.");
+    }
+  }
 
   public downloadStatus: any = { active: false, total: 0, completed: 0, city: '', paused: false, totalMb: 0, mb: 0 };
-  public customModal = { show: false, title: '', body: '', isProvince: false, city: '', isAlreadyDone: false, isDelete: false };
+  public customModal = { show: false, title: '', body: '', isProvince: false, city: '', isAlreadyDone: false, isDelete: false, bbox: null as any };
   public downloadStats = { speed: '0 KB/s', eta: 'N/A', totalMb: '0.00' };
   private statsInterval: any;
   private areaHighlight: L.Rectangle | undefined;
@@ -281,24 +355,24 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
 
   public get isSatellite(): boolean { return this.currentLayerName === 'satellite'; }
 
-  public showDownloadModal(area: string, isAll: boolean): void {
-    this.customModal = { show: true, title: 'Download', body: `Harvest ${area}?`, isProvince: isAll, city: area, isAlreadyDone: false, isDelete: false };
+  public showDownloadModal(area: string, isAll: boolean, bbox: any = null): void {
+    this.customModal = { show: true, title: 'Download', body: `Harvest ${area}?`, isProvince: isAll, city: area, isAlreadyDone: false, isDelete: false, bbox: bbox };
   }
   public showProvinceSelector(): void {
-    this.customModal = { show: true, title: 'Select Region', body: 'Choose a province:', isProvince: true, city: 'Punjab', isAlreadyDone: false, isDelete: false };
+    this.customModal = { show: true, title: 'Select Region', body: 'Choose a province:', isProvince: true, city: 'Punjab', isAlreadyDone: false, isDelete: false, bbox: null };
   }
   public startOfflineHarvest(): void {
     if (!this.map) return;
     const center = this.map.getCenter();
     let bbox: any;
     
-    // 🌍 AREA vs CITY LOGIC (v63.0)
-    if (this.customModal.city === 'Current View') {
-        // Precise Viewport Capture
+    // 🌍 AREA vs CITY vs GLOBAL LOGIC (v115.0)
+    if (this.customModal.bbox) {
+        bbox = this.customModal.bbox;
+    } else if (this.customModal.city === 'Current View') {
         const bounds = this.map.getBounds();
         bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
     } else {
-        // Full City Metropolitan Scope (0.15 Radius)
         const radius = 0.15; 
         bbox = [center.lng - radius, center.lat - radius, center.lng + radius, center.lat + radius];
     }
@@ -358,7 +432,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
 
   public pauseDownload(): void { fetch(`${this.baseUrl}/pause-download`, { method: 'POST' }); }
   public resumeDownload(): void { fetch(`${this.baseUrl}/resume-download`, { method: 'POST' }); }
-  public showDeleteModal(city: string): void { this.customModal = { show: true, title: 'Delete', body: `Delete ${city}?`, isProvince: false, city, isAlreadyDone: false, isDelete: true }; }
+  public showDeleteModal(city: string): void { this.customModal = { show: true, title: 'Delete', body: `Delete ${city}?`, isProvince: false, city, isAlreadyDone: false, isDelete: true, bbox: null }; }
   public confirmStopDownload(): void {
     const city = this.downloadStatus.city.replace('🛰️ ', '');
     this.customModal = { 
@@ -368,7 +442,8 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
         isProvince: false, 
         city, 
         isAlreadyDone: false, 
-        isDelete: true 
+        isDelete: true,
+        bbox: null
     };
   }
 

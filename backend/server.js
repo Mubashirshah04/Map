@@ -72,6 +72,14 @@ function latLngToTile(lat, lng, zoom) {
     return { x: Math.floor((lng + 180) / 360 * zBase), y: Math.floor((0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * zBase) };
 }
 
+function tileToLatLng(x, y, z) {
+    const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z);
+    return {
+        lat: (180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)))),
+        lon: (x / Math.pow(2, z) * 360 - 180)
+    };
+}
+
 app.get('/tiles/:layer/:z/:x/:y.png', async (req, res) => {
     const { layer, z, x, y } = req.params;
     const tile = await getTileWithFallback(layer, parseInt(z), parseInt(x), parseInt(y));
@@ -80,41 +88,90 @@ app.get('/tiles/:layer/:z/:x/:y.png', async (req, res) => {
 
 app.post('/start-download', (req, res) => {
     const { city, bbox } = req.body;
-    const pakBbox = [60.8, 23.6, 77.9, 37.1]; 
-    const iranBbox = [44.0, 24.0, 63.5, 40.0];
-    const afghanBbox = [60.0, 29.3, 74.9, 38.5];
+    
+    // 🌍 CORE STRATEGIC TARGETS (High-Precision)
+    const targets = {
+        'All Pakistan': [60.8, 23.6, 77.9, 37.1],
+        'Full Iran': [44.0, 24.0, 63.5, 40.0],
+        'Full Afghanistan': [60.0, 29.3, 74.9, 38.5],
+        'Full India': [68.1, 8.1, 97.4, 35.5],
+        'Full China': [73.5, 18.2, 134.8, 53.6],
+        'Full USA': [-124.7, 24.5, -66.9, 49.4],
+        'Full Russia': [19.6, 41.2, 190.2, 81.9],
+        'Full Turkey': [25.6, 35.8, 44.8, 42.1],
+        'Full Saudi Arabia': [34.5, 16.4, 55.6, 32.2],
+        'Full UAE': [51.5, 22.6, 56.4, 26.0]
+    };
 
     let activeBbox = bbox;
-    if (city === 'All Pakistan') activeBbox = pakBbox;
-    else if (city === 'Full Iran') activeBbox = iranBbox;
-    else if (city === 'Full Afghanistan') activeBbox = afghanBbox;
+    if (targets[city]) activeBbox = targets[city];
+
+    if (!activeBbox) return res.status(400).json({ error: "Missing Bounding Box" });
 
     const maxZ = 21; 
     let totalTotal = 0;
     const layers = ['google-street', 'satellite', 'arcgis-street', 'arcgis-satellite'];
-    
-    // 📐 PRE-CALCULATE ACCURATE TARGETS
+    const isStrategic = ['All Pakistan', 'Full Iran', 'Full Afghanistan'].includes(city);
+
+    // 📐 SMART ESTIMATOR (v117.0): Model the harvest before starting
     for (let z = 0; z <= maxZ; z++) {
         const nw = latLngToTile(Math.max(activeBbox[1], activeBbox[3]), Math.min(activeBbox[0], activeBbox[2]), z);
         const se = latLngToTile(Math.min(activeBbox[1], activeBbox[3]), Math.max(activeBbox[0], activeBbox[2]), z);
-        totalTotal += (Math.abs(se.x - nw.x) + 1) * (Math.abs(se.y - nw.y) + 1);
+        const layerTiles = (Math.abs(se.x - nw.x) + 1) * (Math.abs(se.y - nw.y) + 1);
+        
+        if (z <= 18 || isStrategic) {
+            totalTotal += layerTiles;
+        } else {
+            totalTotal += (50 * 25000) / (maxZ - 18); 
+        }
     }
     
-    const finalTotal = totalTotal * layers.length;
-    // 🧠 REALISTIC ESTIMATOR (v62.2): WebP avg ~6KB per tile
+    const finalTotal = Math.floor(totalTotal * layers.length);
     let finalTotalMb = (finalTotal * 0.006); 
-    if (city === 'All Pakistan') finalTotalMb = 250000; 
-    else if (city === 'Full Iran') finalTotalMb = 550000;
-    else if (city === 'Full Afghanistan') finalTotalMb = 220000;
+    
+    // 💎 PROPORTIONAL BUDGET SCALING (v125.0)
+    const strategicBudgets = {
+        'all pakistan': 250000,
+        'full iran': 550000,
+        'full afghanistan': 220000,
+        'full india': 750000,
+        'full china': 850000,
+        'full usa': 950000,
+        'full russia': 1100000,
+        'punjab': 85000,
+        'sindh': 65000,
+        'kpk': 45000,
+        'balochistan': 35000,
+        'gilgit-baltistan': 12000,
+        'ajk': 8000
+    };
+    
+    const cityKey = city.toLowerCase().trim();
+    if (strategicBudgets[cityKey]) {
+        finalTotalMb = strategicBudgets[cityKey];
+    } else {
+        // 📏 DYNAMIC SCALING: Handling Antimeridian & Scale
+        let lonDiff = Math.abs(activeBbox[2] - activeBbox[0]);
+        if (lonDiff > 180) lonDiff = 360 - lonDiff; // Handle wrap-around
+        const latDiff = Math.abs(activeBbox[3] - activeBbox[1]);
+        
+        const areaSqDeg = lonDiff * latDiff;
+        const pkBenchmark = 230; 
+        const ratio = areaSqDeg / pkBenchmark;
+        // 💎 PURE PROPORTIONAL (v128.0): Min 5GB Baseline
+        finalTotalMb = Math.min(1000000, Math.max(5120, ratio * 250000)); 
+        console.log(`[OMEGA] 📐 Scaled Budget for ${city}: ${finalTotalMb.toFixed(0)} MB (Ratio: ${ratio.toFixed(2)})`);
+    }
 
     downloadQueue = { 
         total: finalTotal, completed: 0, bytes: 0, active: true, paused: false, city, 
-        totalMb: parseFloat(finalTotalMb), bbox: activeBbox 
+        totalMb: parseFloat(finalTotalMb), 
+        bbox: activeBbox 
     };
     
-    // 🚩 SAVE METRICS TO DB (v98.0 Fix: Added total_tiles)
-    db.run("INSERT OR REPLACE INTO downloads (city, status, size_mb, completed_tiles, total_tiles, bbox) VALUES (?,?,?,?,?,?)", 
-        [city, 'Downloading', 0, 0, finalTotal, JSON.stringify(activeBbox)]);
+    // 🚩 SAVE METRICS TO DB (v123.0: Persist Calibrated Budget)
+    db.run("INSERT OR REPLACE INTO downloads (city, status, size_mb, completed_tiles, total_tiles, total_mb, bbox) VALUES (?,?,?,?,?,?,?)", 
+        [city, 'Downloading', 0, 0, finalTotal, finalTotalMb, JSON.stringify(activeBbox)]);
     res.json({ status: "started", total: finalTotal });
 
     (async () => {
@@ -122,9 +179,31 @@ app.post('/start-download', (req, res) => {
         const CONCURRENCY = 100; 
         let yieldCounter = 0;
 
+        // 🧠 OMEGA SMART HARVEST (v116.0): Urban Priority Logic
+        let urbanZones = [];
+        const isStrategic = ['All Pakistan', 'Full Iran', 'Full Afghanistan'].includes(city);
+        
+        if (!isStrategic) {
+            const cleanCountry = city.replace('Full ', '').trim();
+            console.log(`[SMART] 🔍 Mapping Urban Heat Zones for ${cleanCountry}...`);
+            try {
+                const cityRes = await axios.get(`https://nominatim.openstreetmap.org/search?country=${cleanCountry}&featuretype=city&format=json&limit=50`, {
+                    headers: { 'User-Agent': 'OMEGA-GIS-Engine/118.0' }
+                });
+                urbanZones = cityRes.data.map(c => ({ lat: parseFloat(c.lat), lon: parseFloat(c.lon), r: 0.15 })); 
+                console.log(`[SMART] 📍 Found ${urbanZones.length} HD zones.`);
+            } catch (e) { 
+                console.warn(`[SMART] ⚠️ Could not map ${cleanCountry}: ${e.message}`); 
+            }
+        }
+
         try {
             for (let z = 0; z <= maxZ; z++) {
                 if (!downloadQueue.active) break;
+                
+                // 🛑 SMART CAP: Non-strategic countries stop at Z18 for non-urban areas
+                const isDeepZoom = z > 18;
+                
                 const nw_c = latLngToTile(Math.max(activeBbox[1], activeBbox[3]), Math.min(activeBbox[0], activeBbox[2]), z);
                 const se_c = latLngToTile(Math.min(activeBbox[1], activeBbox[3]), Math.max(activeBbox[0], activeBbox[2]), z);
                 
@@ -132,11 +211,19 @@ app.post('/start-download', (req, res) => {
                     for (let y = Math.min(nw_c.y, se_c.y); y <= Math.max(nw_c.y, se_c.y); y++) {
                         if (!downloadQueue.active) break;
                         
-                        // ⚙️ OMEGA STABILITY KERNEL (v110.0): Prevent Event Loop Blocking
+                        // 🧠 SMART FILTER: If Z > 18 and NOT in a strategic zone or urban zone, SKIP.
+                        if (isDeepZoom && !isStrategic) {
+                            const tileLatLon = tileToLatLng(x, y, z);
+                            const inZone = urbanZones.some(u => 
+                                Math.abs(u.lat - tileLatLon.lat) < u.r && Math.abs(u.lon - tileLatLon.lon) < u.r
+                            );
+                            if (!inZone) continue; 
+                        }
+
                         yieldCounter++;
                         if (yieldCounter >= 500) {
                             yieldCounter = 0;
-                            await new Promise(r => setImmediate(r)); // 🧠 Crucial: Let Node.js "Breathe"
+                            await new Promise(r => setImmediate(r));
                         }
 
                         for (const layer of layers) {
@@ -170,43 +257,8 @@ app.post('/start-download', (req, res) => {
     })();
 });
 
-app.get('/download-status', (req, res) => {
-    const currentMbNum = downloadQueue.bytes / (1024*1024);
-    const currentMb = currentMbNum.toFixed(2);
-    let totalTiles = downloadQueue.total;
-    let completedTiles = downloadQueue.completed;
-    if (completedTiles > totalTiles) totalTiles = completedTiles;
 
-    // 📊 OMEGA REGIONAL PARTITIONS (v101.0) - Mandatory Budgets
-    const budgets = {
-        'Punjab': 85000, 'Sindh': 65000, 'KPK': 45000, 'Balochistan': 35000, 
-        'Gilgit-Baltistan': 12000, 'AJK': 8000,
-        'All Pakistan': 256000,
-        'Full Iran': 563200,
-        'Full Afghanistan': 225280
-    };
-
-    let estimatedTotalMbNum = totalTiles * 0.006; 
-    
-    if (downloadQueue.city) {
-        for (const [name, budget] of Object.entries(budgets)) {
-            if (downloadQueue.city.includes(name)) {
-                estimatedTotalMbNum = budget;
-                break;
-            }
-        }
-    }
-    
-    if (currentMbNum > estimatedTotalMbNum) estimatedTotalMbNum = currentMbNum; 
-    res.json({ ...downloadQueue, mb: currentMb, totalMb: estimatedTotalMbNum.toFixed(2), totalTiles, completedTiles });
-});
-
-// 🛡️ OMEGA REGIONAL GEOFENCE (v106.2 Refresh)
-function isInsideAllowedZone(bbox) {
-    // Covers Iran, Afghanistan, and Pakistan: Lon [44, 80], Lat [23, 40]
-    return !(bbox[0] < 44 || bbox[2] > 80 || bbox[1] < 23 || bbox[3] > 40);
-}
-
+// 📡 GLOBAL MISSION SEARCH API
 app.get('/api/search', async (req, res) => {
     const { q, countrycodes, limit } = req.query;
     if (!q) return res.json([]);
@@ -391,7 +443,13 @@ app.get('/download-status', (req, res) => {
     // 🛡️ UNIVERSAL STATUS REPORTER (v105.0)
     if (downloadQueue.active) {
         const mb = (downloadQueue.bytes / (1024*1024)).toFixed(2);
-        return res.json({ ...downloadQueue, mb, totalMb: (downloadQueue.total * 0.006).toFixed(2), totalTiles: downloadQueue.total, completedTiles: downloadQueue.completed });
+        return res.json({ 
+            ...downloadQueue, 
+            mb, 
+            totalMb: downloadQueue.totalMb.toFixed(2), 
+            totalTiles: downloadQueue.total, 
+            completedTiles: downloadQueue.completed 
+        });
     }
     
     if (autoHarvestingStatus.active) {
@@ -433,8 +491,14 @@ app.post('/auto-discover', (req, res) => {
         const totalScope = scope * totalLayers;
         const status = isEnabled ? '📍 Planning Mission...' : '📡 Harvesting Scope...';
 
-        db.run("INSERT OR REPLACE INTO downloads (city, status, size_mb, completed_tiles, total_tiles, bbox) VALUES (?,?,?,?,?,?)",
-            [autoCity, status, (row && row.size_mb != null ? row.size_mb : 0), (row && row.completed_tiles != null ? row.completed_tiles : 0), totalScope, JSON.stringify(finalBbox)], () => {
+        // 📏 DYNAMIC SCALING FOR AUTO-DISCOVER (v123.0)
+        const areaSqDeg = Math.abs(finalBbox[2] - finalBbox[0]) * Math.abs(finalBbox[3] - finalBbox[1]);
+        const pkBenchmark = 230;
+        const ratio = areaSqDeg / pkBenchmark;
+        const calBudget = Math.min(1000000, Math.max(5120, ratio * 250000));
+
+        db.run("INSERT OR REPLACE INTO downloads (city, status, size_mb, completed_tiles, total_tiles, total_mb, bbox) VALUES (?,?,?,?,?,?,?)",
+            [autoCity, status, (row && row.size_mb != null ? row.size_mb : 0), (row && row.completed_tiles != null ? row.completed_tiles : 0), totalScope, calBudget, JSON.stringify(finalBbox)], () => {
                 if (!isEnabled) startHarvesting();
                 res.json({ success: true });
             });

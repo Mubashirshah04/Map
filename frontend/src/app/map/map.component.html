@@ -29,18 +29,33 @@
         <div class="icon-item" (click)="showDownloadModal('Current City', false)"><i>📥</i> <span>Download Current City</span></div>
         <div class="icon-item" (click)="downloadCurrentArea()"><i>📐</i> <span>Download Area (Z21)</span></div>
         <div class="icon-item" (click)="showProvinceSelector()"><i>🚩</i> <span>Region Download</span></div>
-        <div class="icon-item" (click)="showDownloadModal('All Pakistan', false)">
-          <i>🇵🇰</i> <span>Full Pakistan (Z21)</span>
+        <!-- 🌍 OMEGA GLOBAL MISSION HUB (v121.0) -->
+        <div class="mission-hub-container">
+          <div class="hub-label">🎯 GLOBAL MISSION HUB</div>
+          <div class="searchable-dropdown">
+             <div class="search-input-wrapper">
+                <input type="text" 
+                       class="country-search-box" 
+                       placeholder="🔍 Search Country..." 
+                       [(ngModel)]="countrySearchQuery" 
+                       (focus)="isCountryListVisible = true"
+                       (input)="filterCountries()">
+                <button class="harvest-btn-pill" (click)="initGlobalMission()">🚀 Start</button>
+             </div>
+             
+             <div class="country-results-overlay" *ngIf="isCountryListVisible && filteredCountries.length > 0">
+                <div class="country-opt" *ngFor="let c of filteredCountries" (click)="selectCountry(c)">
+                   {{c.flag}} {{c.name}}
+                </div>
+             </div>
+          </div>
         </div>
-        <div class="icon-item" (click)="showDownloadModal('Full Iran', false)">
-          <i>🇮🇷</i> <span>Full Iran (Z21)</span>
-        </div>
-        <div class="icon-item" (click)="showDownloadModal('Full Afghanistan', false)">
-          <i>🇦🇫</i> <span>Full Afghanistan (Z21)</span>
-        </div>
+
+        <div class="divider"></div>
+
         <div class="icon-item" (click)="toggleAutoDiscover()" [style.background]="isAutoDiscover ? '#e8f0fe' : (isHarvesting ? '#fce8e6' : 'transparent')">
           <i [style.color]="isAutoDiscover ? '#1a73e8' : (isHarvesting ? '#d93025' : '#5f6368')">{{isAutoDiscover ? '📡' : (isHarvesting ? '⬇️' : '📡')}}</i> 
-          <span [style.color]="isAutoDiscover ? '#1a73e8' : (isHarvesting ? '#d93025' : '#202124')" style="font-weight:700;">{{isAutoDiscover ? '📍 Planning...' : (isHarvesting ? '⬇️ Harvesting...' : 'Auto-Discovery')}}</span>
+          <span [style.color]="isAutoDiscover ? '#1a73e8' : (isHarvesting ? '#d93025' : '#202124')" style="font-weight:700;">{{isAutoDiscover ? '📍 Planning Path...' : (isHarvesting ? '⬇️ Harvesting...' : 'Auto-Discovery')}}</span>
         </div>
       </div>
 
@@ -62,6 +77,10 @@
                downloadStatus.city.includes('Pakistan') ? '250.00 GB' : 
                downloadStatus.city.includes('Iran') ? '550.00 GB' : 
                downloadStatus.city.includes('Afghanistan') ? '220.00 GB' : 
+               downloadStatus.city.includes('India') ? '750.00 GB' : 
+               downloadStatus.city.includes('China') ? '850.00 GB' : 
+               downloadStatus.city.includes('USA') ? '950.00 GB' : 
+               downloadStatus.city.includes('Russia') ? '1.10 TB' : 
                formatBytes(downloadStatus.totalMb)
              }}</span>
           </div>
@@ -169,7 +188,11 @@
                     reg.city.includes('Pakistan') ? '250.00 GB' : 
                     reg.city.includes('Iran') ? '550.00 GB' : 
                     reg.city.includes('Afghanistan') ? '220.00 GB' : 
-                    formatBytes(reg.total_tiles * 0.006)
+                    reg.city.includes('India') ? '750.00 GB' : 
+                    reg.city.includes('China') ? '850.00 GB' : 
+                    reg.city.includes('USA') ? '950.00 GB' : 
+                    reg.city.includes('Russia') ? '1.10 TB' : 
+                    formatBytes(reg.total_mb)
                   }}</span>
                </div>
                <div style="display:flex; gap:8px; opacity:0.8;">
