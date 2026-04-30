@@ -260,7 +260,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
   public async performSearch(): Promise<void> {
     if (!this.searchQuery) return;
     try {
-      const osmRes = await fetch(`${this.baseUrl}/api/search?q=${this.searchQuery}&countrycodes=pk,ir,af&limit=1`);
+      const osmRes = await fetch(`${this.baseUrl}/api/search?q=${this.searchQuery}&limit=1`);
       const results = await osmRes.json();
       if (results.length > 0 && this.map) {
         this.map.flyTo([parseFloat(results[0].lat), parseFloat(results[0].lon)], 16);
@@ -271,7 +271,7 @@ export class MapComponent implements OnInit, AfterViewInit, OnDestroy {
 
   public onSearchInput(): void {
     if (this.searchQuery.length < 3) { this.searchSuggestions = []; return; }
-    fetch(`${this.baseUrl}/api/search?q=${this.searchQuery}&countrycodes=pk,ir,af&limit=5`)
+    fetch(`${this.baseUrl}/api/search?q=${this.searchQuery}&limit=5`)
       .then(res => res.json())
       .then(data => { this.searchSuggestions = data; })
       .catch(err => console.error(err));

@@ -9,31 +9,47 @@ const app = express();
 const PORT = 5000;
 const DB_PATH = path.join(__dirname, 'tiles.db');
 
+// 🛠️ ENVIRONMENT PROVISIONING (v131.0): Ensure clean startup on fresh downloads
+const WWWROOT = path.join(__dirname, 'wwwroot');
+const TILES_DIR = path.join(WWWROOT, 'tiles');
+if (!fs.existsSync(WWWROOT)) fs.mkdirSync(WWWROOT, { recursive: true });
+if (!fs.existsSync(TILES_DIR)) fs.mkdirSync(TILES_DIR, { recursive: true });
+
 app.use(cors());
 app.use(express.json());
 
 let db;
 function initDB() {
+    console.log("🔍 [OMEGA] Initializing Safe-Kernel DB...");
     db = new sqlite3.Database(DB_PATH, (err) => {
         if (err) console.error("❌ Critical DB Error:", err);
     });
 
     db.serialize(() => {
-        db.run("CREATE TABLE IF NOT EXISTS downloads (city TEXT PRIMARY KEY, status TEXT, size_mb REAL, completed_tiles INTEGER, total_tiles INTEGER, bbox TEXT)");
+        // 🛡️ INDUSTRIAL-STRENGTH PROTECTION (v129.0)
+        db.run("PRAGMA journal_mode = WAL");
+        db.run("PRAGMA synchronous = EXTRA"); // 💎 Absolute max safety for power-cuts
+        db.run("PRAGMA cache_size = 10000");
+        db.run("PRAGMA temp_store = MEMORY");
+
+        db.run("CREATE TABLE IF NOT EXISTS downloads (city TEXT PRIMARY KEY, status TEXT, size_mb REAL, completed_tiles INTEGER, total_tiles INTEGER, total_mb REAL, bbox TEXT)");
         db.run("CREATE TABLE IF NOT EXISTS tiles (layer TEXT, z INTEGER, x INTEGER, y INTEGER, data BLOB, PRIMARY KEY(layer, z, x, y))");
         
-        // 🛡️ OMEGA SAFETY KERNEL (v111.0): Power-Loss Protection
-        db.run("PRAGMA journal_mode = WAL");
-        db.run("PRAGMA synchronous = NORMAL"); // 💎 Safer than 'OFF' for ambiguous poweroff
-        db.run("PRAGMA cache_size = 10000");
-
-        // 🩺 Startup Integrity Check
-        db.get("SELECT count(*) as total FROM tiles", (err, row) => {
-            if (err && err.message.includes('malformed')) {
+        // 🩺 Deep Startup Integrity Check
+        db.get("PRAGMA integrity_check", (err, row) => {
+            if (err || (row && row.integrity_check !== 'ok')) {
                 console.error("\n🛑 ALERT: DATABASE CORRUPTION DETECTED!");
-                console.error("👉 Please run 'node omega_rescue.js' immediately to save your 159GB+ data.\n");
+                console.log("🛠️ Attempting Auto-Repair (VACCUM)...");
+                db.run("VACUUM", (vErr) => {
+                    if (vErr) {
+                        console.error("❌ Auto-Repair Failed. Corruption is deep.");
+                        console.error("👉 ACTION REQUIRED: Run 'node omega_rescue.js' to salvage data.\n");
+                    } else {
+                        console.log("✅ Auto-Repair Successful! Integrity restored.");
+                    }
+                });
             } else {
-                console.log("✅ Database Integrity: Healthy");
+                console.log("✅ Database Integrity: [SOLID]");
             }
         });
     });

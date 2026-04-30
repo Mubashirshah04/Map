@@ -27,7 +27,7 @@ const dbNew = new sqlite3.Database(NEW_DB);
 
 dbNew.serialize(() => {
     // 🏗️ Reconstruct Tables
-    dbNew.run("CREATE TABLE IF NOT EXISTS downloads (city TEXT PRIMARY KEY, status TEXT, size_mb REAL, completed_tiles INTEGER, total_tiles INTEGER, bbox TEXT)");
+    dbNew.run("CREATE TABLE IF NOT EXISTS downloads (city TEXT PRIMARY KEY, status TEXT, size_mb REAL, completed_tiles INTEGER, total_tiles INTEGER, total_mb REAL, bbox TEXT)");
     dbNew.run("CREATE TABLE IF NOT EXISTS tiles (layer TEXT, z INTEGER, x INTEGER, y INTEGER, data BLOB, PRIMARY KEY(layer, z, x, y))");
     
     // 🚀 High-Speed Recovery Settings
@@ -40,8 +40,8 @@ dbNew.serialize(() => {
             console.warn("⚠️ Could not recover 'downloads' table. Skipping...");
         } else if (rows) {
             rows.forEach(r => {
-                dbNew.run("INSERT OR REPLACE INTO downloads VALUES (?,?,?,?,?,?)", 
-                    [r.city, r.status, r.size_mb, r.completed_tiles, r.total_tiles, r.bbox]);
+                dbNew.run("INSERT OR REPLACE INTO downloads (city, status, size_mb, completed_tiles, total_tiles, total_mb, bbox) VALUES (?,?,?,?,?,?,?)", 
+                    [r.city, r.status, r.size_mb, r.completed_tiles, r.total_tiles, r.total_mb, r.bbox]);
             });
             console.log(`✅ Recovered ${rows.length} mission records.`);
         }
